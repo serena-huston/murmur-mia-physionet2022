@@ -16,7 +16,8 @@ import pandas as pd
 import torch
 import team_helper_code, team_constants, team_data_processing, combine_models
 import outlier_model, gradient_boosting_model, rubin_cnn_model, nn_ensemble_model
-from springer_segmentation import train_segmentation, run_segmentation
+from springer_segmentation import train_segmentation, run_segmentation, heart_rate
+from cnn_segmentation import train_segmentation, run_segmentation
 import combine_models
 import time
 
@@ -85,22 +86,20 @@ def train_model(patient_data, patient_recordings, tsv_annotations, model_folder,
          ###### Train HMM model for cardiac cycle segmentations ######
         if verbose >= 1:
             print('Training cardiac cycle detection model...')
-        hmm_model = {}
-        # train the model on expert annotations
-        hmm_model['models'], hmm_model['pi_vector'], hmm_model['total_obs_distribution'] = \
-            train_segmentation.train_hmm_segmentation(recordings, tsvs)
-        team_model['segmentation'] = hmm_model
-
+        
+        team_model['segmentation'] = train_segmentation.train_cnn_segmentation(recordings, tsvs)
         if verbose >= 1:
             print('Performing cardiac cycle inference...')
-        # data_features[:,0] is ages in months
         segmentations, heart_rates = get_recording_segmentations(recordings, 
                                                                 data_features[:,0], 
-                                                                hmm_model)
+                                                                team_model['segmentation'])
+        # data_features[:,0] is ages in months
+        # segmentations = run_segmentation.run_cnn_segmentation(recordings, team_model['segmentation'])
+
     else: 
         segmentations, heart_rates = team_data_processing.load_preprocessed_segmentations(given_segmentations, given_hrs)
 
-    data_features[:,2] = np.array(heart_rates) # replace male (bool) with heart rates
+    data_features[:,2] = np.array(heart_rates).T[0] # replace male (bool) with heart rates
 
     # Extract frequency domain features
     if verbose >= 1:
@@ -240,18 +239,21 @@ def run_challenge_model(model, data, recordings, verbose):
     murmur_classes = ['Present', 'Unknown', 'Absent']
     outcome_classes = ['Abnormal', 'Normal']
     
-    outlier_probs_murmur, gb_probs_murmur, cnn_probs_murmur, \
+    outlier_probs_murmur, gb_probs_murmur, murmur_probs, \
          outlier_probs_outcome, gb_probs_outcome =\
             run_model(model, data, recordings, verbose)
-
+    murmur_pred = np.zeros(3)
+    murmur_pred[np.argmax(murmur_probs)] = 1 
+    outcome_probs = np.zeros(2)
+    outcome_pred = np.zeros(2)
     # combine cnn_probs_outcome with gb_probs_outcome using logistic regression
-    pred_labels_murmur, all_probs_murmur = combine_models.combine_CNN_GB(cnn_probs_murmur, gb_probs_murmur)
+    # pred_labels_murmur, all_probs_murmur = combine_models.combine_CNN_GB(cnn_probs_murmur, gb_probs_murmur)
 
     # Combine predictions from different models
-    murmur_pred, murmur_probs = \
-        combine_models.recording_to_murmur_predictions(outlier_probs_murmur, all_probs_murmur)
-    outcome_pred, outcome_probs = \
-        combine_models.recording_to_outcome_predictions(outlier_probs_outcome, gb_probs_outcome)
+    # murmur_pred, murmur_probs = \
+    #     combine_models.recording_to_murmur_predictions(outlier_probs_murmur, all_probs_murmur)
+    # outcome_pred, outcome_probs = \
+    #     combine_models.recording_to_outcome_predictions(outlier_probs_outcome, gb_probs_outcome)
     # TODO there might be a problem with the gb_probs_outcome. index 0 is always 0. 
     # it shouldn't make a difference, but check this
     
@@ -348,8 +350,8 @@ def run_model(model, data, recordings, verbose, given_segmentations=None, given_
                                             data_features, 
                                             )
     
-    return outlier_probs_murmur, gb_probs_murmur, cnn_probs_murmur, \
-         outlier_probs_outcome, gb_probs_outcome
+    return np.zeros(len(outlier_probs_murmur)), np.zeros(len(gb_probs_murmur)), \
+            cnn_probs_murmur, np.zeros(len(outlier_probs_outcome)), np.zeros(len(gb_probs_outcome))
 
 
 ################################################################################
@@ -466,11 +468,11 @@ def process_data_and_recordings(patient_data, patient_recordings, tsv_annotation
         
         try: 
             pat_outcome = team_helper_code.get_outcome_labels(patient_data[i])
-        except ValueError:
+        except ValueError as e:
             # outcomes are in newer version of dataset
             # randint used for testing in order to have 2 labels, but should not be used in training
             pat_outcome = 0
-
+ 
         # Loop through available recordings and reassign labels on a per-recording basis as needed.
         for rec_idx, rec in enumerate(patient_recordings[i]):
             # If Murmur, but not audible at this location, set recording label to Absent
@@ -494,7 +496,7 @@ def process_data_and_recordings(patient_data, patient_recordings, tsv_annotation
             #get number of recordings
             num_rec = len(patient_recordings[i])
             num_recs.append(num_rec)
-        
+
     if len(annotations) != len(recordings) and tsv_annotations is not None:
         print('Are you missing an annotation file?')
 
@@ -508,7 +510,7 @@ def process_data_and_recordings(patient_data, patient_recordings, tsv_annotation
     return pat_ids, recordings, data_features, annotations, murmur_labels, outcome_labels, num_recs
 
 
-def get_recording_segmentations(recordings, ages, hmm_model, verbose=1):
+def get_recording_segmentations(recordings, ages, cnn_model, verbose=1):
     """
     Parameters
         recordings (list): list of individual recordings
@@ -528,13 +530,14 @@ def get_recording_segmentations(recordings, ages, hmm_model, verbose=1):
             print(f'Processing recording {i+1}/{len(recordings)}...')
         # get lower and upper heartrates
         hr_lims = team_data_processing.define_hr_thresh(ages[i], scale_thresh=1)
-        assigned_states, hr = run_segmentation.run_hmm_segmentation(recordings[i], 
-                                                                hmm_model['models'], 
-                                                                hmm_model['pi_vector'], 
-                                                                hmm_model['total_obs_distribution'],
-                                                                min_heart_rate=hr_lims[0], 
-                                                                max_heart_rate=hr_lims[1], 
-                                                                return_heart_rate=True)
+        assigned_states = run_segmentation.run_cnn_segmentation(recordings[i], 
+                                                                cnn_model)
+
+        hr, _ = heart_rate.get_heart_rate(recordings[i],
+                                                     4000,
+                                                     min_heart_rate=hr_lims[0],
+                                                     max_heart_rate=hr_lims[1],
+                                                     multiple_rates=False)
 
         segmentation_indices = team_data_processing.get_segmentation_indices(assigned_states)
 
@@ -564,3 +567,7 @@ def extract_recording_features(recordings, segmentations):
     cc_features = np.vstack(cc_features).astype(np.float32)
 
     return cc_features
+
+MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
+DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_5_Patients"
+train_challenge_model(DATA_PATH, MODEL_PATH, 2)
