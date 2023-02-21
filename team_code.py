@@ -35,8 +35,9 @@ def train_challenge_model(data_folder, model_folder, verbose):
     if verbose >= 1:
         print('Loading data and recordings...')
     patient_data, patient_recordings, tsv_annotations = load_data_from_folder(data_folder, load_segmentations=True)
+
     # recording_segmentation = load_recording_segmentation(data_folder, patient_data)
-    
+
     # called in a separate function, so we can do custom train test splits if needed
     train_model(patient_data, patient_recordings, tsv_annotations, model_folder, verbose, given_segmentations=None)
 
@@ -242,18 +243,15 @@ def run_challenge_model(model, data, recordings, verbose):
     outlier_probs_murmur, gb_probs_murmur, cnn_probs_murmur, \
          outlier_probs_outcome, gb_probs_outcome =\
             run_model(model, data, recordings, verbose)
-    # murmur_pred = np.zeros(3)
-    # murmur_pred[np.argmax(murmur_probs)] = 1 
-    outcome_probs = np.zeros(2)
-    outcome_pred = np.zeros(2)
+
     # combine cnn_probs_outcome with gb_probs_outcome using logistic regression
     pred_labels_murmur, all_probs_murmur = combine_models.combine_CNN_GB(cnn_probs_murmur, gb_probs_murmur)
 
     # Combine predictions from different models
     murmur_pred, murmur_probs = \
         combine_models.recording_to_murmur_predictions(outlier_probs_murmur, all_probs_murmur)
-    # outcome_pred, outcome_probs = \
-    #     combine_models.recording_to_outcome_predictions(outlier_probs_outcome, gb_probs_outcome)
+    outcome_pred, outcome_probs = \
+        combine_models.recording_to_outcome_predictions(outlier_probs_outcome, gb_probs_outcome)
     # TODO there might be a problem with the gb_probs_outcome. index 0 is always 0. 
     # it shouldn't make a difference, but check this
     
@@ -474,6 +472,7 @@ def process_data_and_recordings(patient_data, patient_recordings, tsv_annotation
             pat_outcome = 0
  
         # Loop through available recordings and reassign labels on a per-recording basis as needed.
+
         for rec_idx, rec in enumerate(patient_recordings[i]):
             # If Murmur, but not audible at this location, set recording label to Absent
             if pat_label == 0 and locations[rec_idx] not in murmur_locations: 
@@ -567,6 +566,6 @@ def extract_recording_features(recordings, segmentations):
 
     return cc_features
 
-MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
-DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
-train_challenge_model(DATA_PATH, MODEL_PATH, 2)
+# MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
+# DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
+# train_challenge_model(DATA_PATH, MODEL_PATH, 2)
