@@ -5,6 +5,7 @@ from springer_segmentation.upsample_states import *
 import numpy as np
 import torch 
 from librosa import resample
+import math 
 
 PATCH_SIZE = 64
 STRIDE = 8 
@@ -28,23 +29,34 @@ def run_cnn_segmentation(audio_data,
     for patch in x_patches: 
         window_probabilities = model(torch.tensor(patch, requires_grad=True).type(torch.float32))
         window_predictions.append(make_segmentation_predictions(window_probabilities))
-    combined_windows = make_sample_prediction(window_predictions, int(len(audio_data)/(Fs/50)))
-    predictions = upsample_states(combined_windows, 50, Fs, len(audio_data))
-    return np.array(predictions)
+    combined_windows = make_sample_prediction(window_predictions, math.ceil(len(audio_data)/(Fs/50)))
+    predictions = upsample_states(combined_windows, 50, Fs, len(audio_data)) + 1 
+    return np.array(predictions) 
 
 def make_sample_prediction(patches, new_length):
     index_options = {key: [] for key in range(new_length)}
-
+    if (PATCH_SIZE > new_length):
+        return np.array(patches[0][:new_length])
     for i in range(len(patches)):
         for j in range(len(patches[i])):
             max_index = (PATCH_SIZE-1)+(STRIDE*i)
             if max_index >= new_length:
                 shift = max_index - new_length + 1 
-                index_options[j+(STRIDE*i)-shift].append(patches[i][j])
+                index_options[j+(STRIDE*i)-shift].append(patches[i][j].item())
             else: 
-                index_options[j+(STRIDE*i)].append(patches[i][j])
-    prediction = [statistics.mode(value) for (key, value) in index_options.items()] 
-    return np.array(prediction)
+                index_options[j+(STRIDE*i)].append(patches[i][j].item())
+
+    prediction = np.zeros(new_length)
+
+    
+    for (key, value) in index_options.items():  
+        mode = statistics.mode(value)
+        if key == 0 or mode == (prediction[key-1] + 1) % 4:
+            prediction[key] = mode 
+        else:
+            prediction[key] = prediction[key-1]
+   
+    return prediction
 
 
 def make_segmentation_predictions(window_probabilities):

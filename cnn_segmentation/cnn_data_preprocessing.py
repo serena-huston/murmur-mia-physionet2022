@@ -149,7 +149,7 @@ class CNNDataPreprocessing:
             padding = self.PATCH_SIZE - self.combined_envs.shape[1]
             self.combined_envs = np.pad(self.combined_envs, [(0,0), (0, padding)], mode="constant", constant_values=(0))
         for i in range(0, self.combined_envs.shape[1], self.STRIDE):
-            if i+self.PATCH_SIZE > self.combined_envs.shape[1]:
+            if i+self.PATCH_SIZE >= self.combined_envs.shape[1]:
                 patch = self.combined_envs[:, -self.PATCH_SIZE:]
                 patch_list.append(patch)
                 break
@@ -163,9 +163,9 @@ class CNNDataPreprocessing:
         patch_list = [] 
         if len(self.segmentation_array) < self.PATCH_SIZE: 
             padding = self.PATCH_SIZE - len(self.segmentation_array)
-            self.segmentation_array = np.pad(self.segmentation_array, pad_width=padding, mode="constant", constant_values=(0))
+            self.segmentation_array = np.pad(self.segmentation_array, pad_width=(0,padding), mode="constant", constant_values=(self.segmentation_array[-1]))
         for i in range(0, len(self.segmentation_array), self.STRIDE):
-            if i+self.PATCH_SIZE > len(self.segmentation_array):
+            if i+self.PATCH_SIZE >= len(self.segmentation_array):
                 patch = self.segmentation_array[-self.PATCH_SIZE:]
                 patch_list.append(patch)
                 break

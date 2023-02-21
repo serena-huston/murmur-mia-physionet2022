@@ -45,8 +45,6 @@ def get_cnn_data(recordings, annotations, recording_freq=4000, feature_freq=50):
             
             x_patches = dp.extract_env_patches()
             y_patches = dp.extract_segmentation_patches()
-
-
             cnn_data.append(CNNData(np.array(x_patches), np.array(y_patches)))
         except:
             continue 
@@ -61,9 +59,6 @@ def set_up_model():
 
 
 def fit_model(trainloader, epochs=8, patience=5):
-
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
-
     model.train(True)
 
     for epoch in range(epochs):

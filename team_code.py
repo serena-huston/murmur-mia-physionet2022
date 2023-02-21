@@ -16,7 +16,7 @@ import pandas as pd
 import torch
 import team_helper_code, team_constants, team_data_processing, combine_models
 import outlier_model, gradient_boosting_model, rubin_cnn_model, nn_ensemble_model
-from springer_segmentation import train_segmentation, run_segmentation, heart_rate
+from springer_segmentation import heart_rate
 from cnn_segmentation import train_segmentation, run_segmentation
 import combine_models
 import time
@@ -239,19 +239,19 @@ def run_challenge_model(model, data, recordings, verbose):
     murmur_classes = ['Present', 'Unknown', 'Absent']
     outcome_classes = ['Abnormal', 'Normal']
     
-    outlier_probs_murmur, gb_probs_murmur, murmur_probs, \
+    outlier_probs_murmur, gb_probs_murmur, cnn_probs_murmur, \
          outlier_probs_outcome, gb_probs_outcome =\
             run_model(model, data, recordings, verbose)
-    murmur_pred = np.zeros(3)
-    murmur_pred[np.argmax(murmur_probs)] = 1 
+    # murmur_pred = np.zeros(3)
+    # murmur_pred[np.argmax(murmur_probs)] = 1 
     outcome_probs = np.zeros(2)
     outcome_pred = np.zeros(2)
     # combine cnn_probs_outcome with gb_probs_outcome using logistic regression
-    # pred_labels_murmur, all_probs_murmur = combine_models.combine_CNN_GB(cnn_probs_murmur, gb_probs_murmur)
+    pred_labels_murmur, all_probs_murmur = combine_models.combine_CNN_GB(cnn_probs_murmur, gb_probs_murmur)
 
     # Combine predictions from different models
-    # murmur_pred, murmur_probs = \
-    #     combine_models.recording_to_murmur_predictions(outlier_probs_murmur, all_probs_murmur)
+    murmur_pred, murmur_probs = \
+        combine_models.recording_to_murmur_predictions(outlier_probs_murmur, all_probs_murmur)
     # outcome_pred, outcome_probs = \
     #     combine_models.recording_to_outcome_predictions(outlier_probs_outcome, gb_probs_outcome)
     # TODO there might be a problem with the gb_probs_outcome. index 0 is always 0. 
@@ -302,7 +302,7 @@ def run_model(model, data, recordings, verbose, given_segmentations=None, given_
                                                                 model['segmentation'])
     else:
         segmentations, heart_rates = team_data_processing.load_preprocessed_segmentations([given_segmentations], [given_hrs])
-    data_features[:,2] = np.array(heart_rates) 
+    data_features[:,2] = np.array(heart_rates).T[0]
 
     # Extract frequency domain features
     cc_features = extract_recording_features(recordings, segmentations)
@@ -350,8 +350,8 @@ def run_model(model, data, recordings, verbose, given_segmentations=None, given_
                                             data_features, 
                                             )
     
-    return np.zeros(len(outlier_probs_murmur)), np.zeros(len(gb_probs_murmur)), \
-            cnn_probs_murmur, np.zeros(len(outlier_probs_outcome)), np.zeros(len(gb_probs_outcome))
+    return outlier_probs_murmur, gb_probs_murmur, \
+            cnn_probs_murmur, outlier_probs_outcome, gb_probs_outcome
 
 
 ################################################################################
@@ -532,15 +532,14 @@ def get_recording_segmentations(recordings, ages, cnn_model, verbose=1):
         hr_lims = team_data_processing.define_hr_thresh(ages[i], scale_thresh=1)
         assigned_states = run_segmentation.run_cnn_segmentation(recordings[i], 
                                                                 cnn_model)
-
+ 
         hr, _ = heart_rate.get_heart_rate(recordings[i],
                                                      4000,
                                                      min_heart_rate=hr_lims[0],
                                                      max_heart_rate=hr_lims[1],
                                                      multiple_rates=False)
-
+ 
         segmentation_indices = team_data_processing.get_segmentation_indices(assigned_states)
-
         extracted_segmentations.append(segmentation_indices)
         heart_rates.append(hr)
     return extracted_segmentations, heart_rates
@@ -569,5 +568,5 @@ def extract_recording_features(recordings, segmentations):
     return cc_features
 
 MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
-DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_5_Patients"
+DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
 train_challenge_model(DATA_PATH, MODEL_PATH, 2)

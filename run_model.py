@@ -84,3 +84,9 @@ if __name__ == '__main__':
         verbose = 1
 
     run_model(model_folder, data_folder, output_folder, allow_failures, verbose)
+
+
+# MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
+# DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
+# RESULTS_PATH = "/Users/serenahuston/GitRepos/Results"
+# run_model(MODEL_PATH, DATA_PATH, RESULTS_PATH, False, 2)
