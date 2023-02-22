@@ -102,8 +102,7 @@ def cv_run_model(patient_data, patient_recordings, tsv_annotations, verbose, tra
         model_folder = f'models/split{split+1}'
         team_model = {}
 
-        print(train_index)
-        print(test_index)
+
         # train model
         if train:
             team_code.train_model(patient_data[train_index], 
