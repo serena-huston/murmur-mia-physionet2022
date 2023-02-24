@@ -1,7 +1,6 @@
 from cnn_segmentation.cnn_data import CNNData
 from cnn_segmentation.cnn_data_preprocessing import CNNDataPreprocessing
 from cnn_segmentation.unet_segmentation import * 
-from cnn_segmentation.early_stopping import EarlyStopping
 import numpy as np
 from tqdm import trange
 import torch 
@@ -9,12 +8,10 @@ import torch.nn as nn
 import torch.nn.functional as F 
 from torch.utils.data import ConcatDataset, DataLoader
 
-import sys 
-# sys.path.append("/Users/serenahuston/GitRepos/murmur-mia-physionet2022")
 from springer_segmentation.train_segmentation import create_segmentation_array
 
 
-MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
+MODEL_PATH = "cnn_segmentation/models/cnn_segmentation_model_weights_2016.pt"
 
 def train_cnn_segmentation(recordings, annotations, recording_freq=4000, feature_freq=50):
     cnn_dataset = get_cnn_data(recordings, annotations, recording_freq=recording_freq, feature_freq=feature_freq)
@@ -53,7 +50,7 @@ def get_cnn_data(recordings, annotations, recording_freq=4000, feature_freq=50):
 def set_up_model():
     global model, optimiser, criterion 
     model = UNet()
-    model.load_state_dict(torch.load(MODEL_PATH + "cnn_segmentation_model_weights_2016.pt"))
+    model.load_state_dict(torch.load(MODEL_PATH))
     optimiser = torch.optim.Adam(model.parameters(), lr=0.0001)
     criterion = nn.CrossEntropyLoss()
 
@@ -62,14 +59,11 @@ def fit_model(trainloader, epochs=8, patience=5):
     model.train(True)
 
     for epoch in range(epochs):
-        training_loss = [] 
-        validation_loss = [] 
         model.train()
         for x,y in trainloader:
             optimiser.zero_grad()
             yhat = model(x[0])
             loss = criterion(torch.t(yhat), y[0])
-            training_loss.append(loss.item())
             loss.backward()
             optimiser.step()
     

@@ -565,7 +565,3 @@ def extract_recording_features(recordings, segmentations):
     cc_features = np.vstack(cc_features).astype(np.float32)
 
     return cc_features
-
-# MODEL_PATH = "/Users/serenahuston/GitRepos/Models/"
-# DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
-# train_challenge_model(DATA_PATH, MODEL_PATH, 2)

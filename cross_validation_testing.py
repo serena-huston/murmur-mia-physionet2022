@@ -228,5 +228,5 @@ def main(data_folder, verbose):
     pickle.dump(split_outputs, open(pn, 'wb'))
 
 
-DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients"
+DATA_PATH = "/Users/serenahuston/GitRepos/Data/DataSubset_12_Patients" # Replace with path to big dataset 
 main(DATA_PATH, 2)
