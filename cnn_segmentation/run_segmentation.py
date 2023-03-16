@@ -7,8 +7,8 @@ import torch
 from librosa import resample
 import math 
 
-PATCH_SIZE = 64
-STRIDE = 8 
+PATCH_SIZE = 256
+STRIDE = 32
 
 def run_cnn_segmentation(audio_data,
                          models,
