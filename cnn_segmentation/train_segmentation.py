@@ -40,9 +40,9 @@ def get_cnn_data(recordings, annotations, recording_freq=4000, feature_freq=50):
         try:
             dp = CNNDataPreprocessing(clipped_recording[0], segmentations[0]-1, recording_freq)
             
-            x_patches = dp.extract_env_patches()
-            y_patches = dp.extract_segmentation_patches()
-            cnn_data.append(CNNData(np.array(x_patches), np.array(y_patches)))
+            dp.extract_env_patches()
+            dp.extract_segmentation_patches()
+            cnn_data.append(CNNData(dp.env_patches, dp.seg_patches))
         except:
             continue 
     return cnn_data

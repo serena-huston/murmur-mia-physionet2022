@@ -21,7 +21,8 @@ class CNNDataPreprocessing:
         self.wav = wav
         self.segmentation_array = segmentation_array
         self.sampling_frequency = fs
-
+        self.seg_patches = [] 
+        self.env_patches = []
         self.set_envelopes()
         self.normalise_envelopes()
         self.create_envelope_signal()
@@ -142,37 +143,31 @@ class CNNDataPreprocessing:
         high_pass_filtered_signal = filtfilt(B_high, A_high, original_signal)
         return high_pass_filtered_signal
 
-    
     def extract_env_patches(self):
-        patch_list = [] 
-        if self.combined_envs.shape[1] < self.PATCH_SIZE: 
-            padding = self.PATCH_SIZE - self.combined_envs.shape[1]
-            self.combined_envs = np.pad(self.combined_envs, [(0,0), (0, padding)], mode="constant", constant_values=(0))
         for i in range(0, self.combined_envs.shape[1], self.STRIDE):
+            padding = i+self.PATCH_SIZE - self.combined_envs.shape[1]
             if i+self.PATCH_SIZE >= self.combined_envs.shape[1]:
-                patch = self.combined_envs[:, -self.PATCH_SIZE:]
-                patch_list.append(patch)
+                self.combined_envs = np.pad(self.combined_envs, [(0,0), (0, padding)], mode="constant", constant_values=(0))
+                patch = self.combined_envs[:, i:i+self.PATCH_SIZE]
+                self.env_patches.append(patch)
                 break
             else: 
                 patch = self.combined_envs[:, i:i+self.PATCH_SIZE]
-                patch_list.append(patch)
-        return patch_list 
-
+                self.env_patches.append(patch)
+        self.env_patches = np.array(self.env_patches)
 
     def extract_segmentation_patches(self):
-        patch_list = [] 
-        if len(self.segmentation_array) < self.PATCH_SIZE: 
-            padding = self.PATCH_SIZE - len(self.segmentation_array)
-            self.segmentation_array = np.pad(self.segmentation_array, pad_width=(0,padding), mode="constant", constant_values=(self.segmentation_array[-1]))
         for i in range(0, len(self.segmentation_array), self.STRIDE):
+            padding = i+self.PATCH_SIZE - len(self.segmentation_array)
             if i+self.PATCH_SIZE >= len(self.segmentation_array):
-                patch = self.segmentation_array[-self.PATCH_SIZE:]
-                patch_list.append(patch)
+                self.segmentation_array = np.pad(self.segmentation_array, pad_width=(0,padding), mode="constant", constant_values=(self.segmentation_array[-1]))
+                patch = self.segmentation_array[i:i+self.PATCH_SIZE]
+                self.seg_patches.append(patch)
                 break
             else: 
                 patch = self.segmentation_array[i:i+self.PATCH_SIZE]
-                patch_list.append(patch)
-        return patch_list 
+                self.seg_patches.append(patch)
+        self.seg_patches = np.array(self.seg_patches)
 
     def downsample_segmentation_array(self):
         labels_per_sample = int(self.sampling_frequency / self.DOWNSAMPLE_FREQUENCY)
