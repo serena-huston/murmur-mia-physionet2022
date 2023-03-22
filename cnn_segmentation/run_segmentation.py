@@ -57,7 +57,7 @@ def make_sample_prediction(patches, new_length):
 
 
 def make_segmentation_predictions(window_probabilities):
-    softmax = F.softmax(window_probabilities, dim=1)
+    softmax = F.softmax(window_probabilities, dim=0)
     _, yhat = torch.max(softmax, 0)
     for i in range(1, yhat.shape[0]): 
         if yhat[i] != (yhat[i-1] + 1) % 4:
