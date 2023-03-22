@@ -11,7 +11,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 from springer_segmentation.train_segmentation import create_segmentation_array
 
 
-MODEL_PATH = "cnn_segmentation/init_weights/cnn_model_weights_2016_256_32.pt"
+MODEL_PATH = "cnn_segmentation/init_weights/cnn_model_weights_2016_64_8.pt"
 
 def train_cnn_segmentation(recordings, annotations, recording_freq=4000, feature_freq=50):
     cnn_dataset = get_cnn_data(recordings, annotations, recording_freq=recording_freq, feature_freq=feature_freq)
