@@ -11,8 +11,6 @@ from torch.utils.data import ConcatDataset, DataLoader
 from springer_segmentation.train_segmentation import create_segmentation_array
 
 
-MODEL_PATH = "cnn_segmentation/init_weights/cnn_model_weights_2016_256_32.pt"
-
 def train_cnn_segmentation(recordings, annotations, recording_freq=4000, feature_freq=50):
     cnn_dataset = get_cnn_data(recordings, annotations, recording_freq=recording_freq, feature_freq=feature_freq)
     cnn_dataset = ConcatDataset(cnn_dataset)
@@ -50,12 +48,12 @@ def get_cnn_data(recordings, annotations, recording_freq=4000, feature_freq=50):
 def set_up_model():
     global model, optimiser, criterion 
     model = UNet()
-    model.load_state_dict(torch.load(MODEL_PATH))
+    model.apply(init_weights)
     optimiser = torch.optim.Adam(model.parameters(), lr=0.0001)
     criterion = nn.CrossEntropyLoss()
 
 
-def fit_model(trainloader, epochs=8, patience=5):
+def fit_model(trainloader, epochs=6):
     model.train(True)
 
     for epoch in range(epochs):

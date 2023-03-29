@@ -7,8 +7,8 @@ import torch
 from librosa import resample
 import math 
 
-PATCH_SIZE = 256
-STRIDE = 32
+PATCH_SIZE = 128
+STRIDE = 16
 
 def run_cnn_segmentation(audio_data,
                          models,
@@ -53,13 +53,7 @@ def make_sample_prediction(patches, new_length):
     return prediction
 
 
-
-
-
 def make_segmentation_predictions(window_probabilities):
     softmax = F.softmax(window_probabilities, dim=0)
     _, yhat = torch.max(softmax, 0)
-    for i in range(1, yhat.shape[0]): 
-        if yhat[i] != (yhat[i-1] + 1) % 4:
-            yhat[i] = yhat[i-1]
     return yhat 

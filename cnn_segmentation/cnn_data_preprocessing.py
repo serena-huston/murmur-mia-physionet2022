@@ -14,7 +14,7 @@ class CNNDataPreprocessing:
 
 
     DOWNSAMPLE_FREQUENCY = 50 
-    PATCH_SIZE = 256
+    PATCH_SIZE = 128
     STRIDE = int(PATCH_SIZE / 8)
 
     def __init__(self, wav, segmentation_array, fs):
