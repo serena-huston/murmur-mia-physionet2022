@@ -53,7 +53,7 @@ def set_up_model():
     criterion = nn.CrossEntropyLoss()
 
 
-def fit_model(trainloader, epochs=7):
+def fit_model(trainloader, epochs=6):
     model.train(True)
 
     for epoch in range(epochs):
